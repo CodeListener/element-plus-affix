@@ -15,15 +15,16 @@ import {
   shallowRef,
   watchEffect,
 } from "vue";
-import { useElementBounding } from "@vueuse/core";
+import { useElementBounding, useWindowSize } from "@vueuse/core";
 
 const props = withDefaults(
   defineProps<{
     offset?: number;
+    position?: "top" | "bottom";
   }>(),
-  { offset: 0 }
+  { offset: 0, position: "top" }
 );
-const root = shallowRef<HTMLLegendElement>();
+const root = shallowRef<HTMLElement>();
 const {
   height: rootHeight,
   width: rootWidth,
@@ -32,7 +33,7 @@ const {
   update: updateRoot,
 } = useElementBounding(root);
 const scrollContainer = shallowRef<HTMLElement | Window>();
-
+const { height: windowHeight } = useWindowSize();
 const rootStyle = computed<CSSProperties>(() => {
   return {
     width: fixed.value ? `${rootWidth.value}px` : "",
@@ -44,7 +45,8 @@ const affixStyle = computed<CSSProperties>(() => {
   return {
     width: `${rootWidth.value}px`,
     height: `${rootHeight.value}px`,
-    top: `${props.offset}px`,
+    top: props.position === "top" ? `${props.offset}px` : "",
+    bottom: props.position === "bottom" ? `${props.offset}px` : "",
   };
 });
 
@@ -52,7 +54,11 @@ const fixed = ref(false);
 
 const update = () => {
   if (!scrollContainer.value) return;
-  fixed.value = props.offset >= rootTop.value;
+  if (props.position === "top") {
+    fixed.value = props.offset >= rootTop.value;
+  } else {
+    fixed.value = windowHeight.value - props.offset < rootBottom.value;
+  }
 };
 
 onMounted(() => {

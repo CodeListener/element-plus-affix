@@ -2,7 +2,8 @@
 theme: nico
 highlight: an-old-hope
 ---
-# ElementPlus Affix 源码解析
+
+# 动动手你也能实现 ElementPlus Affix 固定组件
 
 > 最近稍微比较有空，突然想到过往开发的业务中对于类似`Element-Plus 的 Affix`的逻辑很少进行封装，起兴看了下`Element-Plus Affix`的源码进行学习，以下是对`Affix`组件进行解析，觉得有兴趣的`JYM`建议开个项目一起动起来，（PS: 文中的 vue api 就不进行讲解了，想必大佬们都看过`vue官方文档了`）
 
@@ -56,7 +57,8 @@ highlight: an-old-hope
 逻辑分为以下几个步骤
 
 1. 定义获取目标元素及其元素信息，滚动容器, fixed 状态
-``` javascript
+
+```javascript
    import { useElementBounding } from "@vueuse/core";
    // 目标元素信息
    const root = shallowRef<HTMLElement>();
@@ -73,7 +75,8 @@ highlight: an-old-hope
 ```
 
 2. onMounted 阶段设置 scrollContainer 滚动容器，更新 root 的信息
-``` javascript
+
+```javascript
 onMounted(() => {
   // 在这里我们只是实现base版本即根据视口固定，所以先取window为滚动容器，
   // 后面我们会更新逻辑
@@ -82,18 +85,22 @@ onMounted(() => {
   updateRoot()
 })
 ```
+
 3. 使用 watchEffect/update 更新 fixed 的状态【根据 root 滚动时实时更新的位置信息来驱动】
-``` javascript
+
+```javascript
 const update = () => {
   if (!scrollContainer.value) return
   // 这里可以看到，我们根据当目标元素root的位置信息top<0判断是否将离开窗口而进行fixed
-  fixed.value = props.offset >= rootTop.value
+  fixed.value = rootTop.value <= 0
 }
 watchEffect(update)
 ```
+
 4. 设置元素的样式信息
    按照我们的 template 写法，我们要理解下，外部传入的 slot 内容最后是要 fixed 的，所以 div.affix-content 容器是为了当即将离开时对其设置 fixed 状态，而 div.affix 是为了当 div.affix-content 被 fixed 时，div.affix 是会坍缩的，如果不对其设置宽高，会导致滚动到 fixed 阶段时其他内容会有一个闪动 bug
-``` javascript
+
+```javascript
 const rootStyle =
   computed <
   CSSProperties >
@@ -115,18 +122,20 @@ const affixStyle =
     }
   })
 ```
+
 ### css
-``` css
+
+```css
 .fixed {
   position: fixed;
 }
 ```
 
-## 新增offset 参数
+## 新增 offset 参数
 
 我们发现我们实现的 base 版本只是通过 rootTop.value <= 0 进行判断是否固定，而如果我想有一定的偏移量，还需要拓展以下,我们定义可从外部传入 offset
 
-``` javascript
+```javascript
  const props = withDefaults(
      defineProps<{
             offset?: number;
@@ -135,12 +144,59 @@ const affixStyle =
 );
 ```
 
-接着我们在 update 方法中将判断调整成以下逻辑，这样我们就可以达成根据传入的offset进行偏移了
+接着我们在 update 方法中将判断调整成以下逻辑，这样我们就可以达成根据传入的 offset 进行偏移了
 
-``` js
+```js
 const update = () => {
-    // ...
-    fixed.value = props.offset >= rootTop.value
+  // ...
+  fixed.value = props.offset >= rootTop.value
 }
 ```
+
+## 新增 position
+
+基于之前的版本，我们只实现了滚动时目标元素固定到顶部，接下来我们按照 element-plus，加入 position 参数属性，让目标元素能够根据传入的 position:top|bottom 来进行定位
+
+```javascript
+const props = withDefaults(
+  defineProps<{
+    offset?: number;
+    // 新增position参数
+    position?: "top" | "bottom";
+  }>(),
+  { offset: 0, position: "top" }
+);
+```
+
+我们跳转到 update 方法中，按照之前的写法，我们只是先 position=top 的逻辑，我们将其修改一下
+
+```javascript
+const update = () => {
+  if (!scrollContainer.value) return
+  if (props.position === 'top') {
+    fixed.value = props.offset >= rootTop.value
+  } else {
+    // 解读：当目标元素的rootBottom(底部位置) > 窗口高度 - 目标元素偏移量
+    fixed.value = windowHeight.value - props.offset < rootBottom.value
+  }
 }
+```
+
+与此同时在固定目标元素时，需要根据传入的 position=top|bottom 进而设置 affixStyle 的 top 或者 bottom
+
+```javascript
+const affixStyle =
+  computed <
+  CSSProperties >
+  (() => {
+    if (!fixed.value) return {}
+    return {
+      width: `${rootWidth.value}px`,
+      height: `${rootHeight.value}px`,
+      top: props.position === 'top' ? `${props.offset}px` : '',
+      bottom: props.position === 'bottom' ? `${props.offset}px` : '',
+    }
+  })
+```
+
+这样就完成了 position 根据 top|bottom 的功能
