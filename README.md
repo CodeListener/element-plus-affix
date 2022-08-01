@@ -200,3 +200,200 @@ const affixStyle =
 ```
 
 这样就完成了 position 根据 top|bottom 的功能
+
+## 新增 target
+
+到目前为止以上的实现基本上能够满足基本需求，但有是有业务会希望目标元素在固定之后，在父容器(非滚动)从窗口即将消失时，目标元素也能够过渡恢复状态，基于这个需求，我们新增了 target：在指定父容器消失之后，其目标元素也希望跟着取消 fixed 状态。
+
+开始我们的实现：
+
+1. 定义 target[父容器的 css 选择器]⚠️ 非滚动容器
+
+```javascript
+const props = withDefaults(
+  defineProps<{
+    offset?: number;
+    position?: "top" | "bottom";
+    // 注意：target不可以为滚动容器
+    target?: string;
+  }>(),
+  { offset: 0, position: "top", target: "" }
+);
+```
+
+2. 在`onMounted`内通过 target 选择器去获取父容器
+
+```javascript
+onMounted(() => {
+  //...省略部分代码
+  if (props.target) {
+    target.value =
+      document.querySelector < HTMLElement > props.target ?? undefined
+    if (!target.value) {
+      throw new Error('Target is not existed')
+    }
+  } else {
+    // 如果没有默认设置为document.documentElement
+    target.value = document.documentElement
+  }
+})
+```
+
+3. 在 watchEffect/update 方法中，判断是否存在父容器，有则相应添加 fixed 逻辑
+
+### 情况一：当 position 为 top
+
+#### 1. fixed 判断 (有 target)
+
+- props.offset - rootTop.value 的情况
+- target(父容器)必须在可视窗口内，即 targetRect.bottom 如果小于 0 则意味着父容器从可视窗口消失，这是就要取消掉 fixed 状态
+
+```javascript
+const update = () => {
+  // ...
+  // 情况一：
+  if (props.position === 'top') {
+    // 存在target情况
+    if (props.target) {
+      const difference =
+        // fixed判断
+        (fixed.value =
+          props.offset > rootTop.value && targetRect.bottom.value > 0)
+    } else {
+      // 不存在target的情况
+      fixed.value = props.offset >= rootTop.value
+    }
+  } else {
+    fixed.value = windowHeight.value - props.offset < rootBottom.value
+  }
+}
+```
+
+通过以上实现我们预览一下会发现，当父容器逐渐离开时，目标元素没有平滑过渡离开，显然我们还要实现如何达到过渡效果
+
+![](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f70d568cd3834512abb769e8418c3a15~tplv-k3u1fbpfcp-watermark.image?)
+
+#### 2. 目标元素过渡
+
+还是上面的代码，我们在 fixed 判断下面添加过渡逻辑,其计算公式为 `父容器底部位置[动态] - 传入的偏移量[常量值] - 目标高度[常量值]`
+
+```javascript
+// 创建 transform变量用来平滑过度值的保存
+const transform = ref(0)
+
+const update = () => {
+  // ...
+  // 情况一：
+  if (props.position === 'top') {
+    if (props.target) {
+      // fixed判断
+      fixed.value = props.offset > rootTop.value && targetRect.bottom.value > 0
+      // 父容器底部位置 - 传入的偏移量 - 目标高度
+      // 父容器底部在滚动时位置是实时变化，即当每次滚动时他们的差值就是目标元素过渡值
+      const difference =
+        targetRect.bottom.value - props.offset - rootHeight.value
+      // 保存平滑过渡值
+      transform.value = difference < 0 ? difference : 0
+    }
+    // ...
+  }
+}
+```
+
+我们将保存的`transform`值设置到`affixStyle`中，这样我们就完成`position=top`且存在 target(父容器)的情况, 以下是实现效果
+
+```javascript
+const affixStyle =
+  computed <
+  CSSProperties >
+  (() => {
+    return {
+      // ...
+      transform: transform.value ? `translateY(${transform.value}px)` : '',
+    }
+  })
+```
+
+![gif.gif](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/cff8495f9788497aaafc0331fc33982e~tplv-k3u1fbpfcp-watermark.image?)
+
+### 情况二：当 position 为 bottom
+
+position:bottom 也是和 top 一样有两个判断
+
+- windowHeight.value - props.offset < rootBottom.value 的情况
+- target(父容器)必须在可视窗口内，即 targetRect.top 如果大于可视窗口高度(windowHeight) 则意味着父容器从可视窗口消失，这是就要取消掉 fixed 状态
+
+#### 1. fixed 判断 (有 target)
+
+```javascript
+const update = () => {
+  // ...
+  if (props.position === 'top') {
+    // 省略....
+  } else if (props.target) {
+    // 情况二：
+    // position: bottom 有target
+    // - 窗口高度-传入的偏移量<目标元素的底部位置 且 父容器顶部位置小于窗口高度时fixed
+    fixed.value =
+      windowHeight.value - props.offset < rootBottom.value &&
+      windowHeight.value > targetRect.top.value
+  } else {
+    // position: bottom 不存在target的情况
+    // 窗口高度 - 传入的偏移量 < 目标元素的底部位置
+    fixed.value = windowHeight.value - props.offset < rootBottom.value
+  }
+}
+```
+
+#### 2. 目标元素过渡
+
+底部的过渡计算公式为：`可视窗口高度[常量值] - 父容器顶部位置top[动态] - 传入的偏移量[常量值] - 目标元素的高度[常量值]`
+
+```javascript
+const update = () => {
+  if (!scrollContainer.value) return
+
+  if (props.position === 'top') {
+    // 省略...
+  } else if (props.target) {
+    // 省略...
+    const difference =
+      windowHeight.value -
+      targetRect.top.value -
+      props.offset -
+      rootHeight.value
+    transform.value = difference < 0 ? -difference : 0
+  }
+  // 省略...
+}
+```
+
+### 效果
+
+![result.gif](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fcb2bf4e2cb74b7681a69862928483f6~tplv-k3u1fbpfcp-watermark.image?)
+
+### target 总结
+
+我们总结一下我们在设置有无 target 的情况下的逻辑:
+
+- **position: top 情况:**
+
+  1.  **fixed 条件** :
+      <br/>不存在`target`： `props.offset` > `rootTop.value` [偏移量 > 目标相对视口的顶部偏移 top]
+      <br/>存在`target` ：`targetRect.bottom.value > 0` [基于第 1 点，加上 指定父容器底部`未`离开视口]
+  2.  **目标元素平滑过渡** [只存在 target 情况]
+      <br/>`difference`= `targetRect.bottom.value - props.offset - rootHeight.value` [父容器底部相对视口位置 - 目标偏移量 - 目标高度]
+
+- **position: bottom 情况：**
+
+  1. **fixed 条件**
+     <br />不存在`target`：`windowHeight.value` - `props.offset` < `rootBottom.value` [当目标底部相对视口位置 < 视口高度 - 偏移量]
+     <br/>存在`target`：`windowHeight.value > targetRect.top.value`[基于第一点，加上 指定父容器顶部`未`离开视口]
+
+
+    2. **目标元素平滑过渡** [只存在target情况]
+        <br />`difference`= `windowHeight.value - (rootHeight.value + props.offset + targetRect.top.value)` [视口高度 - (父容器顶部相对视口位置 + 偏移量 + 目标元素高度)]的绝对值
+
+
+
+    现在我们就实现完 target 参数的设置啦

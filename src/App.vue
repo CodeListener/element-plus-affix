@@ -53,13 +53,31 @@ import Affix from "./components/Affix.vue";
     <p>这是一行文本</p>
     <p>这是一行文本</p>
     <p>这是一行文本</p>
-    <Affix :offset="80" position="bottom"
-      ><div
-        :style="{ backgroundColor: 'green', padding: '10px', width: '150px' }"
-      >
-        position=bottom / offset=80
-      </div></Affix
+    <div
+      id="parent"
+      :style="{
+        background: '#efefef',
+        height: '400px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }"
     >
+      <Affix :offset="80" position="top" target="#parent"
+        ><div
+          :style="{ backgroundColor: 'green', padding: '10px', width: '150px' }"
+        >
+          position=top target="#parent"
+        </div></Affix
+      >
+      <Affix :offset="80" position="bottom" target="#parent"
+        ><div
+          :style="{ backgroundColor: 'blue', padding: '10px', width: '150px' }"
+        >
+          position=bottom target="#parent"
+        </div></Affix
+      >
+    </div>
     <p>这是一行文本</p>
     <p>这是一行文本</p>
     <p>这是一行文本</p>

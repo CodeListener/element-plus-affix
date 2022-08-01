@@ -21,8 +21,10 @@ const props = withDefaults(
   defineProps<{
     offset?: number;
     position?: "top" | "bottom";
+    // 注意：target不可以为滚动容器
+    target?: string;
   }>(),
-  { offset: 0, position: "top" }
+  { offset: 0, position: "top", target: "" }
 );
 const root = shallowRef<HTMLElement>();
 const {
@@ -32,6 +34,12 @@ const {
   bottom: rootBottom,
   update: updateRoot,
 } = useElementBounding(root);
+
+//  指定父容器
+const target = shallowRef<HTMLElement>();
+// 指定父容器的位置/长宽信息
+const targetRect = useElementBounding(target);
+const transform = ref(0);
 const scrollContainer = shallowRef<HTMLElement | Window>();
 const { height: windowHeight } = useWindowSize();
 const rootStyle = computed<CSSProperties>(() => {
@@ -47,6 +55,7 @@ const affixStyle = computed<CSSProperties>(() => {
     height: `${rootHeight.value}px`,
     top: props.position === "top" ? `${props.offset}px` : "",
     bottom: props.position === "bottom" ? `${props.offset}px` : "",
+    transform: transform.value ? `translateY(${transform.value}px)` : "",
   };
 });
 
@@ -55,7 +64,27 @@ const fixed = ref(false);
 const update = () => {
   if (!scrollContainer.value) return;
   if (props.position === "top") {
-    fixed.value = props.offset >= rootTop.value;
+    if (props.target) {
+      const difference =
+        targetRect.bottom.value - props.offset - rootHeight.value;
+      transform.value = difference < 0 ? difference : 0;
+
+      fixed.value = props.offset > rootTop.value && targetRect.bottom.value > 0;
+    } else {
+      fixed.value = props.offset >= rootTop.value;
+    }
+  } else if (props.target) {
+    fixed.value =
+      windowHeight.value - props.offset < rootBottom.value &&
+      windowHeight.value > targetRect.top.value;
+
+    const difference =
+      windowHeight.value -
+      targetRect.top.value -
+      props.offset -
+      rootHeight.value;
+
+    transform.value = difference < 0 ? -difference : 0;
   } else {
     fixed.value = windowHeight.value - props.offset < rootBottom.value;
   }
@@ -63,6 +92,16 @@ const update = () => {
 
 onMounted(() => {
   scrollContainer.value = window;
+  if (props.target) {
+    target.value =
+      document.querySelector<HTMLElement>(props.target) ?? undefined;
+    if (!target.value) {
+      throw new Error("Target is not existed");
+    }
+  } else {
+    // 如果没有默认设置为document.documentElement
+    target.value = document.documentElement;
+  }
   updateRoot();
 });
 watchEffect(update);
