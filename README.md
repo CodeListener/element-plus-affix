@@ -320,6 +320,37 @@ const update = () => {
 现在我们就实现完 target 参数的设置啦，具体代码可以查看 [**feat-target分支**](https://github.com/CodeListener/element-plus-affix/tree/feat-target)
 
 ## 其余API
-
+目前已经基本完成了`element-plus Affix`组件的核心功能，剩余的API比较简单，我们也一一实现一下：
 ### 事件
+#### change
+   当fixed状态改变时触发，同时返回fixed状态
+#### scroll
+   监听滚动容器并返回`scrollTop`和`fixed`状态
+#### 实现
+根据事件所描述的我们要实现以下几点：
+- 定义`emit`事件: `change`,`scroll`
+- 监听`scrollContainer`滚动：实时获取`scrollContainer`的`scrollTop`
+- 监听fixed状态: 通过`watch`监听fixed,一旦变更通过`emit('change')`通知外部
+
+
+``` typescript
+// 定义`emit`事件: `change`,`scroll`
+const emit = defineEmits<{
+  (event: "change", fixed: boolean): void;
+  (event: "scroll", value: { scrollTop: number; fixed: boolean }): void;
+}>();
+// 监听scrollContainer滚动容器
+const handleScroll = () => {
+  const scrollTop =
+    scrollContainer.value instanceof Window
+      ? document.documentElement.scrollTop
+      : scrollContainer.value?.scrollTop;
+  emit("scroll", { fixed: fixed.value, scrollTop: scrollTop || 0 });
+};
+useEventListener(scrollContainer, "scroll", handleScroll);
+// 监听fixed状态并通知
+watch(fixed, (v) => emit("change", v));
+```
+
 ### 外部方法
+   #### update

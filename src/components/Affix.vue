@@ -13,9 +13,14 @@ import {
   onMounted,
   ref,
   shallowRef,
+  watch,
   watchEffect,
 } from "vue";
-import { useElementBounding, useWindowSize } from "@vueuse/core";
+import {
+  useElementBounding,
+  useWindowSize,
+  useEventListener,
+} from "@vueuse/core";
 
 const props = withDefaults(
   defineProps<{
@@ -26,6 +31,11 @@ const props = withDefaults(
   }>(),
   { offset: 0, position: "top", target: "" }
 );
+const emit = defineEmits<{
+  (event: "change", fixed: boolean): void;
+  (event: "scroll", value: { scrollTop: number; fixed: boolean }): void;
+}>();
+
 const root = shallowRef<HTMLElement>();
 const {
   height: rootHeight,
@@ -90,6 +100,16 @@ const update = () => {
   }
 };
 
+const handleScroll = () => {
+  const scrollTop =
+    scrollContainer.value instanceof Window
+      ? document.documentElement.scrollTop
+      : scrollContainer.value?.scrollTop;
+  emit("scroll", { fixed: fixed.value, scrollTop: scrollTop || 0 });
+};
+
+watch(fixed, (v) => emit("change", v));
+
 onMounted(() => {
   scrollContainer.value = window;
   if (props.target) {
@@ -104,7 +124,13 @@ onMounted(() => {
   }
   updateRoot();
 });
+
+useEventListener(scrollContainer, "scroll", handleScroll);
 watchEffect(update);
+
+defineExpose({
+  update,
+});
 </script>
 <style scoped>
 .fixed {
