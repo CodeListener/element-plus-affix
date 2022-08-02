@@ -65,16 +65,27 @@ import Affix from "./components/Affix.vue";
     >
       <Affix :offset="80" position="top" target="#parent"
         ><div
-          :style="{ backgroundColor: 'green', padding: '10px', width: '150px' }"
+          :style="{
+            backgroundColor: '#27b627',
+            padding: '10px',
+            width: '150px',
+            borderRadius: '8px',
+          }"
         >
-          position=top target="#parent"
+          position=<b>top</b> target="#parent"
         </div></Affix
       >
       <Affix :offset="80" position="bottom" target="#parent"
         ><div
-          :style="{ backgroundColor: 'blue', padding: '10px', width: '150px' }"
+          :style="{
+            marginLeft: '10px',
+            backgroundColor: '#8181d8',
+            padding: '10px',
+            width: '150px',
+            borderRadius: '8px',
+          }"
         >
-          position=bottom target="#parent"
+          position=<b>bottom</b> target="#parent"
         </div></Affix
       >
     </div>
