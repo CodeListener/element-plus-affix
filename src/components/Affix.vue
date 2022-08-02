@@ -21,6 +21,7 @@ import {
   useWindowSize,
   useEventListener,
 } from "@vueuse/core";
+import { getScrollContainer } from "./utils.js";
 
 const props = withDefaults(
   defineProps<{
@@ -111,7 +112,8 @@ const handleScroll = () => {
 watch(fixed, (v) => emit("change", v));
 
 onMounted(() => {
-  scrollContainer.value = window;
+  scrollContainer.value = getScrollContainer(root.value!, true);
+
   if (props.target) {
     target.value =
       document.querySelector<HTMLElement>(props.target) ?? undefined;
