@@ -371,3 +371,7 @@ watch(fixed, (v) => emit("change", v));
    ``` html
        <Affix ref="affixRef"><div>11</div></Affix>
    ```
+具体代码[feat-event-expose分支](https://github.com/CodeListener/element-plus-affix/tree/feat-event-expose)
+## 总结
+经过对`参数`,`时间`,`外部方法`的逐步实现，希望可以让你深入了解`element-plus`的`affix`，在其使用的同时能够快速定位问题所在，还可以在不依赖`element-plus`也能够自己实现该组件。
+由于本人也是新手一个，如果在分析有什么错误还望各位朋友谅解和提出建议
