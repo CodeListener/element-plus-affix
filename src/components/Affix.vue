@@ -21,8 +21,9 @@ const props = withDefaults(
   defineProps<{
     offset?: number;
     position?: "top" | "bottom";
+    zIndex?: number;
   }>(),
-  { offset: 0, position: "top" }
+  { offset: 0, position: "top", zIndex: 100 }
 );
 const root = shallowRef<HTMLElement>();
 const {
@@ -47,6 +48,7 @@ const affixStyle = computed<CSSProperties>(() => {
     height: `${rootHeight.value}px`,
     top: props.position === "top" ? `${props.offset}px` : "",
     bottom: props.position === "bottom" ? `${props.offset}px` : "",
+    zIndex: props.zIndex,
   };
 });
 
