@@ -27,10 +27,11 @@ const props = withDefaults(
   defineProps<{
     offset?: number;
     position?: "top" | "bottom";
+    zIndex: 100;
     // 注意：target不可以为滚动容器
     target?: string;
   }>(),
-  { offset: 0, position: "top", target: "" }
+  { offset: 0, position: "top", target: "", zIndex: 100 }
 );
 const emit = defineEmits<{
   (event: "change", fixed: boolean): void;
@@ -67,6 +68,7 @@ const affixStyle = computed<CSSProperties>(() => {
     top: props.position === "top" ? `${props.offset}px` : "",
     bottom: props.position === "bottom" ? `${props.offset}px` : "",
     transform: transform.value ? `translateY(${transform.value}px)` : "",
+    zIndex: props.zIndex,
   };
 });
 
