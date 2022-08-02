@@ -20,15 +20,15 @@ import { useElementBounding } from "@vueuse/core";
 const props = withDefaults(
   defineProps<{
     offset?: number;
+    zIndex?: number;
   }>(),
-  { offset: 0 }
+  { offset: 0, zIndex: 100 }
 );
 const root = shallowRef<HTMLLegendElement>();
 const {
   height: rootHeight,
   width: rootWidth,
   top: rootTop,
-  bottom: rootBottom,
   update: updateRoot,
 } = useElementBounding(root);
 const scrollContainer = shallowRef<HTMLElement | Window>();
@@ -45,6 +45,7 @@ const affixStyle = computed<CSSProperties>(() => {
     width: `${rootWidth.value}px`,
     height: `${rootHeight.value}px`,
     top: `${props.offset}px`,
+    zIndex: props.zIndex,
   };
 });
 
