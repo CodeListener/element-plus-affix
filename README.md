@@ -16,7 +16,7 @@ highlight: androidstudio
 
 ## 属性列表
 
-以下是`element-plus`官方提供的属性列表，在这里我们着重讲解`offset, position, target`三个参数在在整个组件中的实现
+以下是`element-plus`官方提供的属性列表，在这里我们着重讲解`offset, position, target, z-index`四个参数和其他几个api在整个组件中的实现
 
 | 名称       | 说明                  | 类型                | 默认值  |
 | ---------- | --------------------- | ------------------- | ------- | 
@@ -138,7 +138,26 @@ const update = () => {
     fixed.value = props.offset >= rootTop.value
 }
 ```
-以上就完成了基础版本+`offset`参数的实现，具体代码可以查看 [**base-offset分支**](https://github.com/CodeListener/element-plus-affix/tree/base-offset)
+### ✨ z-index参数
+`z-index`参数比较简单只需通过外部传入，设置到`fixed`的元素即可
+```typescript
+const props = withDefaults(
+  defineProps<{
+    offset?: number;
+    zIndex?: number;
+  }>(),
+  { offset: 0, zIndex: 100 }
+);
+const affixStyle = computed<CSSProperties>(() => {
+  // ...
+  return {
+    // ...
+    zIndex: props.zIndex,
+  };
+});
+```
+
+以上就完成了基础版本+`offset+zIndex`参数的实现，具体代码可以查看 [**base-offset-zIndex分支**](https://github.com/CodeListener/element-plus-affix/tree/base-offset)
 
 ### ✨ position参数
 基于之前的版本我们发现只实现了滚动时目标元素固定到顶部，接下来加入 `position`参数属性让目标元素能够根据传入的`position= top | bottom`来进行定位`顶部固定`或者`底部固定`
@@ -215,7 +234,7 @@ onMounted(() => {
 })
 ```
 
-3. 在`watchEffect(update)`方法中判断是否存在父容器，有则相应添加fixed逻辑,对于没有设置`props.target`逻辑实际上不变，而设置`props.target`主要是基于前者追加对`props.target`的位置信息`targetRect`进行判断，从而设置`fixed状态`和`平滑过渡`
+3. 在`watchEffect(update)`方法中判断是否存在父容器，有的话相应添加fixed逻辑及其过渡,对于没有设置`props.target`逻辑实际上不变，设置`props.target`主要是基于前者追加对`props.target`的位置信息`targetRect`进行判断，从而设置`fixed状态`和`平滑过渡`
 ##### 实现拆分
 > **position=top情况** <br />fixed状态条件 ：<br/>①. `props.offset > rootTop.value` ：和`没有设置target`相同<br/>②. `targetRect.bottom.value > 0`: target(父容器)必须在可视窗口内，即 targetRect.bottom 如果小于 0 则意味着父容器从可视窗口`顶部`消失，这是就要取消掉 fixed 状态
 
@@ -247,7 +266,6 @@ const transform = ref(0)
 
 const update = () => {
     // ...
-    // 情况一：
     if (props.position === 'top') {
         if (props.target) {
             // fixed判断
@@ -320,7 +338,7 @@ const update = () => {
 现在我们就实现完 target 参数的设置啦，具体代码可以查看 [**feat-target分支**](https://github.com/CodeListener/element-plus-affix/tree/feat-target)
 
 ## 其余API
-目前已经基本完成了`element-plus Affix`组件的核心功能，剩余的API比较简单，我们也一一实现一下：
+目前已经基本完成了`element-plus Affix`组件的核心功能，剩余的API比较简单我们也一一实现一下：
 ### 事件
 #### change
    当fixed状态改变时触发，同时返回fixed状态
@@ -354,3 +372,24 @@ watch(fixed, (v) => emit("change", v));
 
 ### 外部方法
    #### update
+   手动更新固钉状态,这就比较简单了，用到`defineExpose`对外暴露`update`方法即可
+   
+   `Affix`组件内部
+   ```typescript
+       defineExpose({ update })
+   ```
+   外部组件：
+   ``` typescript
+       // 因为这里使用的是typescript，通过使用`InstanceType<typeof Affix>`
+       // 能够获取affixRef所暴露的方法，具体可查看vue官方文档描述
+       // https://staging-cn.vuejs.org/guide/typescript/composition-api.html#typing-component-template-refs
+       const affixRef = shallowRef<InstanceType<typeof Affix> | null>(null);
+       // affixRef.value?.update()
+   ```
+   ``` html
+       <Affix ref="affixRef"><div>11</div></Affix>
+   ```
+具体代码[feat-event-expose分支](https://github.com/CodeListener/element-plus-affix/tree/feat-event-expose)
+## 总结
+经过对`参数`,`时间`,`外部方法`的逐步实现，希望可以让你深入了解`element-plus`的`affix`，在其使用的同时能够快速定位问题所在，还可以在不依赖`element-plus`也能够自己实现该组件。
+由于本人也是新手一个，如果在分析有什么错误还望各位朋友谅解和提出建议
