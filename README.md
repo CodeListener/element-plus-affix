@@ -354,3 +354,20 @@ watch(fixed, (v) => emit("change", v));
 
 ### 外部方法
    #### update
+   手动更新固钉状态,这就比较简单了，用到`defineExpose`对外暴露`update`方法即可
+   
+   `Affix`组件内部
+   ```typescript
+       defineExpose({ update })
+   ```
+   外部组件：
+   ``` typescript
+       // 因为这里使用的是typescript，通过使用`InstanceType<typeof Affix>`
+       // 能够获取affixRef所暴露的方法，具体可查看vue官方文档描述
+       // https://staging-cn.vuejs.org/guide/typescript/composition-api.html#typing-component-template-refs
+       const affixRef = shallowRef<InstanceType<typeof Affix> | null>(null);
+       // affixRef.value?.update()
+   ```
+   ``` html
+       <Affix ref="affixRef"><div>11</div></Affix>
+   ```
